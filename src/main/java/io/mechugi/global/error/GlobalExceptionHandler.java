@@ -10,12 +10,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -104,6 +106,22 @@ public class GlobalExceptionHandler {
 		return badRequest("요청 본문의 형식이 올바르지 않음", request);
 	}
 
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ErrorResponse> handleNoResourceFoundException(
+			NoResourceFoundException exception,
+			HttpServletRequest request
+	) {
+		return errorResponse(ErrorCode.API_NOT_FOUND, request);
+	}
+
+	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+	public ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupportedException(
+			HttpRequestMethodNotSupportedException exception,
+			HttpServletRequest request
+	) {
+		return errorResponse(ErrorCode.METHOD_NOT_ALLOWED, request);
+	}
+
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleException(
 			Exception exception,
@@ -120,6 +138,15 @@ public class GlobalExceptionHandler {
 	private ResponseEntity<ErrorResponse> badRequest(String message, HttpServletRequest request) {
 		ErrorCode errorCode = ErrorCode.INVALID_REQUEST;
 		ErrorResponse response = ErrorResponse.of(errorCode, message, request.getRequestURI());
+
+		return ResponseEntity.status(errorCode.getStatus()).body(response);
+	}
+
+	private ResponseEntity<ErrorResponse> errorResponse(
+			ErrorCode errorCode,
+			HttpServletRequest request
+	) {
+		ErrorResponse response = ErrorResponse.from(errorCode, request.getRequestURI());
 
 		return ResponseEntity.status(errorCode.getStatus()).body(response);
 	}
